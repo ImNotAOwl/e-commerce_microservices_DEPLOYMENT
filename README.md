@@ -1,0 +1,2 @@
+# e-commerce_microservices_DEPLOYMENT
+Deployment strategies for Breizhsport microservices application
