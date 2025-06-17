@@ -1,0 +1,13 @@
+- name: Deploy docker image on VPS
+  hosts: home_vps
+  remote_user: "{{ lookup('env', 'VPS_USER') }}"
+  gather_facts: false
+  become: true
+  become_user: root
+  vars:
+    ansible_port: "{{ lookup('env', 'VPS_PORT') | int }}"
+  
+  roles:
+    - docker
+    - docker-compose
+    - caddy

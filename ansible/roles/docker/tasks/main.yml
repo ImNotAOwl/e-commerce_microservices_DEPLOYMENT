@@ -1,0 +1,17 @@
+---
+- name: Install Snapd
+  apt:
+    name: snapd
+    state: present
+    update_cache: yes
+
+- name: Install Docker via Snap
+  community.general.snap:
+    name: docker
+    state: present
+
+- name: Ensure Docker service is running
+  service:
+    name: snap.docker.dockerd
+    state: started
+    enabled: yes

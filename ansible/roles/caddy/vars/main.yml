@@ -1,0 +1,3 @@
+caddy_data_path: ../../../../front/caddy_data
+caddy_user: root
+caddy_group: root

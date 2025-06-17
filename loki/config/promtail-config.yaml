@@ -1,0 +1,48 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://bs_loki-gateway:3100/loki/api/v1/push
+    tenant_id: tenant1
+
+scrape_configs:
+  - job_name: flog_scrape
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        refresh_interval: 5s
+
+    pipeline_stages:
+      # Étape 1 : Décoder les messages JSON (si applicables)
+      - regex:
+          expression: '.*msg="(?P<msg>[^"]+)"'
+
+      # Étape 2 : Extraire des champs spécifiques avec des regex
+      - regex:
+          expression: '^(?P<service_name>\w+): (?P<log_message>.*)'
+          
+      - labels:
+          service: service_name
+          msg: message
+
+      # Étape 3 : Ajouter un label basé sur le nom du conteneur
+      - static_labels:
+          environment: production
+
+      # Étape 4 : Filtrer les logs inutiles (par exemple, healthchecks Docker)
+      - match:
+          selector: '{container="healthcheck"}'
+          action: drop
+
+    relabel_configs:
+      # Ajouter le nom du conteneur comme label "container"
+      - source_labels: [__meta_docker_container_name]
+        regex: /(.*)
+        target_label: container
+
+      # Ajouter un label "job" spécifique pour les logs Docker
+      - source_labels: [__meta_docker_container_label_job]
+        target_label: job

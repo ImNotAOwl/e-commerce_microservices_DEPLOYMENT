@@ -1,0 +1,133 @@
+routes:
+  - 
+    uri: /api/panier
+    # methods: ["GET", "POST", "PUT", "DELETE"]
+    upstream:
+      nodes:
+        - host: bs_panier-api
+          port: 3000
+          weight: 1
+      type: roundrobin
+    plugins:
+        limit-req:
+          key: remote_addr
+          rate: 10
+          burst: 5
+          rejected_code: 503
+        jwt-auth : {}
+        cors: 
+          allow_origins: "**"
+          allow_methods: "GET,POST,DELETE,OPTIONS"
+          allow_headers: "Authorization,Content-Type"
+          expose_headers: "Authorization"
+          allow_credential: true
+  - 
+    uri: /api/panier/*
+    upstream:
+      nodes:
+        - host: bs_panier-api
+          port: 3000
+          weight: 1
+      type: roundrobin
+    plugins:
+        limit-req:
+          key: remote_addr
+          rate: 10
+          burst: 5
+          rejected_code: 503
+        jwt-auth : {}
+        cors: 
+          allow_origins: "**"
+          allow_methods: "GET,POST,DELETE,OPTIONS"
+          allow_headers: "Authorization,Content-Type"
+          expose_headers: "Authorization"
+          allow_credential: true
+  - 
+    uri: /api/catalogue
+    # methods: ["GET", "POST", "PUT", "DELETE"]
+    upstream:
+      nodes:
+        - host: bs_catalogue-api
+          port: 3000
+          weight: 1
+      type: roundrobin
+    plugins:
+        limit-req:
+          key: remote_addr
+          rate: 10
+          burst: 5
+          rejected_code: 503
+        cors: 
+          allow_origins: "**"
+          allow_methods: "GET,POST,DELETE,OPTIONS"
+          allow_headers: "Authorization,Content-Type"
+          expose_headers: "Authorization"
+          allow_credential: true
+  - 
+    uri: /api/commande
+    # methods: ["GET", "POST", "PUT", "DELETE"]
+    upstream:
+      nodes:
+        - host: bs_commande-nginx
+          port: 80
+          weight: 1
+      type: roundrobin
+    plugins:
+        proxy-rewrite:
+          uri: /api/order 
+        limit-req:
+          key: remote_addr
+          rate: 10
+          burst: 5
+          rejected_code: 503
+        jwt-auth : {}
+        cors: 
+          allow_origins: "**"
+          allow_methods: "GET,POST,DELETE,OPTIONS"
+          allow_headers: "Authorization,Content-Type"
+          expose_headers: "Authorization"
+          allow_credential: true
+  - 
+    uri: /api/commandes/*
+    # methods: ["GET", "POST", "PUT", "DELETE"]
+    upstream:
+      nodes:
+        - host: bs_commande-nginx
+          port: 80
+          weight: 1
+      type: roundrobin
+    plugins:
+        proxy-rewrite:
+          regex_uri:
+          - "^/api/commandes/(.*)"
+          - "/api/orders/$1"
+        limit-req:
+          key: remote_addr
+          rate: 10
+          burst: 5
+          rejected_code: 503
+        jwt-auth : {}
+        cors: 
+          allow_origins: "**"
+          allow_methods: "GET,POST,DELETE,OPTIONS"
+          allow_headers: "Authorization,Content-Type"
+          expose_headers: "Authorization"
+          allow_credential: true
+
+consumers:
+  - username: "clerk_consumer"
+    plugins:
+      jwt-auth:
+        key: "public-key-clerk"
+        algorithm: RS256
+        public_key: |
+          -----BEGIN PUBLIC KEY-----
+          MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEApiOjCunnJyZVOGiRZbuL
+          xaZ4eD2NLsKhstXSJwgxJq1Sh63ZGuIS+rg2CCmJbAkIEnpBO/deIbvhYI9nTqVz
+          1r0r3yTubgY1apcHtaoKEuHY1VilOKPE0qzElh+upmGeI9X/Jdsu2UYPdNmaZEDf
+          XZItP04WlTf3ejrKkP4xWQ4ZC5PFePvr4cw8KfeVeF7S1Ko1eaAxq32UjpOGKyC1
+          lCGPxPlUWzrIxnIYGCMtqMG2vhSWZ0yxptjbA/zecwe7oSDLiajDQg/RfXj9fCQb
+          CvNW/0WS1PCIAehW6AMWGOrgp2/8Iok0AMbt0YpAav4VtRCF7W80PVRALu6+SI9r
+          PQIDAQAB
+          -----END PUBLIC KEY-----
+#END

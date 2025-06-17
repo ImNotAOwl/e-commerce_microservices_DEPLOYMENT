@@ -1,0 +1,3 @@
+docker_registry: ghcr.io
+docker_username: "{{ lookup('env', 'VPS_GHRC_USER') }}"
+docker_password: "{{ lookup('env', 'VPS_GHRC_PAT') }}"

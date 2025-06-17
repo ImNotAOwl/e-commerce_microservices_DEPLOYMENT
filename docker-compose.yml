@@ -1,0 +1,72 @@
+include:
+  - ./loki/docker-compose.loki.yml
+  - ./panier/docker-compose.panier.yml
+  - ./catalogue/docker-compose.catalogue.yml
+  - ./commande/docker-compose.commande.yml
+  - ./front/docker-compose.front.yml
+
+services:
+# Service l'API GATEWAY Apache Apisix
+  bs_gateway-apisix:
+    image: apache/apisix:latest
+    container_name: bs_gateway-apisix
+    restart: always
+    user: root #A modifier plus tard
+    volumes:
+      - ./apisix/config/apisix.yaml:/usr/local/apisix/conf/apisix.yaml:ro
+      - ./apisix/config/config.yaml:/usr/local/apisix/conf/config.yaml
+    environment:
+      - APISIX_STAND_ALONE=true
+    ports:
+      - "9080:9080/tcp" # HTTP Port
+      - "9443:9443/tcp" # HTTPS Port
+      - "9180:9180/tcp"
+      - "9091:9091/tcp"
+      - "9092:9092/tcp"
+    networks:
+      - bs-front-network
+      - bs-gateway-network
+      - bs-logging-network
+
+  bs_prometheus:
+    image: prom/prometheus:latest
+    container_name: bs_prometheus
+    restart: always
+    volumes:
+      - ./prometheus/config/config.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - "9090:9090"
+    networks:
+      - bs-gateway-network
+
+  # Service pour RabbitMQ
+  bs_rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: bs_rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD}
+    ports:
+      - "5672:5672"      # Port pour la communication avec l'application
+      - "15672:15672"    # Port pour l'interface de gestion RabbitMQ
+    networks:
+      - bs-broker-network
+      - bs-logging-network
+    healthcheck:
+      test: rabbitmq-diagnostics -q ping
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      
+networks:
+  bs-front-network:
+    name: bs-front-network
+    driver: bridge
+  bs-gateway-network:
+    name: bs-gateway-network
+    driver: bridge
+    internal: true
+  bs-broker-network:
+    name: bs-broker-network
+    driver: bridge
+    internal: true

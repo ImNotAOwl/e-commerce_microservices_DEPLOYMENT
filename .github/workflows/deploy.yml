@@ -1,0 +1,61 @@
+name: Deployment Trigger
+
+on:
+  repository_dispatch:
+    types:
+      - deploy_apis
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Deployment Repo
+        uses: actions/checkout@v3
+
+      - name: Set up environment variables
+        env:
+          VPS_IP: ${{ secrets.VPS_IP }}
+          VPS_USER: ${{ secrets.VPS_USER }}
+          VPS_PORT: ${{ secrets.VPS_PORT }}
+          VPS_GHRC_USER: ${{ secrets.VPS_GHRC_USER }}
+          VPS_GHRC_PAT: ${{ secrets.VPS_GHRC_PAT }}
+        run: |
+          echo "VPS_IP=${VPS_IP}" >> $GITHUB_ENV
+          echo "VPS_USER=${VPS_USER}" >> $GITHUB_ENV
+          echo "VPS_PORT=${VPS_PORT}" >> $GITHUB_ENV
+          echo "VPS_GHRC_USER=${VPS_GHRC_USER}" >> $GITHUB_ENV
+          echo "VPS_GHRC_PAT=${VPS_GHRC_PAT}" >> $GITHUB_ENV
+      
+      - name: Display Payload
+        run: |
+          echo "Payload received: ${{ toJson(github.event.client_payload) }}"
+
+      - name: Extract Payload Information
+        id: extract
+        run: |
+          echo "service_name=${{ github.event.client_payload.service_name }}" >> $GITHUB_ENV
+      
+      - name: Setup SSH
+        shell: bash
+        run: |
+          eval `ssh-agent -s`
+          sudo service ssh start
+          mkdir -p ~/.ssh/
+          touch ~/.ssh/id_rsa
+          echo -e "${{secrets.SSH_PRIVATE_KEY}}" > ~/.ssh/id_rsa
+          chmod 700 ~/.ssh/id_rsa
+          ssh-keyscan -t rsa,dsa,ecdsa,ed25519 -p ${{secrets.VPS_PORT}} ${{secrets.VPS_IP}} >> ~/.ssh/known_hosts
+
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y ansible
+
+      - name: Run Ansible Playbook
+        working-directory: ansible
+        run: |
+          ansible-playbook --private-key ~/.ssh/id_rsa -i hosts.yml playbook.yml -e "service_name=${{env.service_name}}"
+
+      - name: Remove private SSH key folder
+        shell: bash
+        run: sudo rm -rf ~/.ssh

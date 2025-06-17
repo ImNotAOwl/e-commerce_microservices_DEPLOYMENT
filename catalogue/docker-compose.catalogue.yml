@@ -1,0 +1,26 @@
+include:
+  - ./mongoDb/docker-compose.mongo.yml
+
+services:
+  bs_catalogue-api:
+    image: ghcr.io/maalsi23g1/catalogue_api/catalogue_service:latest
+    container_name: bs_catalogue-api
+    ports:
+      - 3002:3000
+    env_file:
+      - ../.env
+    depends_on:
+      bs_catalogue_mongo-init:
+        condition: service_healthy
+      bs_rabbitmq:
+        condition: service_healthy
+    networks:
+      - bs-catalog-network
+      - bs-gateway-network
+      - bs-broker-network
+      - bs-logging-network
+networks:
+  bs-catalog-network:
+    name:  bs-catalog-network
+    driver: bridge
+    internal: true

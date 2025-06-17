@@ -1,0 +1,8 @@
+# dotenv environment variable files
+.env
+*.prod
+CATALOG_PROD*
+COMMAND_PROD_DB*
+.data
+
+*.key

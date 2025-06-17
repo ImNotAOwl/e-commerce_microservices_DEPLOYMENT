@@ -1,0 +1,93 @@
+---
+- name: Check Docker Compose version
+  command: docker-compose --version
+  register: docker_compose_version
+  ignore_errors: true
+
+- name: Set fact for desired Docker Compose version
+  set_fact:
+    desired_version: "v2.32.4"
+
+- name: Check if Docker Compose needs to be updated
+  set_fact:
+    update_docker_compose: "{{ desired_version not in docker_compose_version.stdout }}"
+
+- name: Install docker install
+  ansible.builtin.include_tasks: install.yml
+  when: update_docker_compose
+
+- name: Create Docker Compose directory
+  file:
+    path: ~/breizh_deploy
+    state: directory
+    mode: '0755'
+  become: false  
+
+- name: Synchorisation du folder
+  ansible.posix.synchronize:
+    src: ../../../../
+    dest: ~/breizh_deploy
+    dest_port: "{{ lookup('ansible.builtin.vars', 'ansible_port') }}"
+  become: false
+
+- name: Copy .env.sample to target server
+  copy:
+    src: ../../../../.env.sample
+    dest: ~/breizh_deploy/.env
+  become: false
+
+- name: Ensure correct ownership of ~/breizh_deploy
+  file:
+    path: /home/breizhuser/breizh_deploy
+    state: directory
+    owner: "{{ lookup('env', 'VPS_USER') }}"
+    group: "{{ lookup('env', 'VPS_USER') }}"
+    recurse: no
+
+- name: Create directory for MongoDB keys
+  file:
+    path: ~/breizh_deploy/catalogue/mongoDb/keys
+    state: directory
+    mode: '0755'
+  become: false
+
+- name: Check if MongoDB replica set key file exists
+  stat:
+    path: /home/breizhuser/breizh_deploy/catalogue/mongoDb/keys/mongo-replica-set.key
+  register: mongo_key_file
+  become: false
+
+- name: Generate MongoDB replica set key
+  command: openssl rand -base64 756
+  register: mongo_key
+  become: false
+  when: not mongo_key_file.stat.exists
+
+- name: Write MongoDB replica set key to file
+  copy:
+    content: "{{ mongo_key.stdout }}"
+    dest: /home/breizhuser/breizh_deploy/catalogue/mongoDb/keys/mongo-replica-set.key
+    mode: '0600'
+    owner: '999'
+    group: '999'
+  when: not mongo_key_file.stat.exists
+
+- name: Log in to the private Docker registry
+  community.docker.docker_login:
+    registry: "{{ docker_registry }}"
+    username: "{{ docker_username }}"
+    password: "{{ docker_password }}"
+    reauthorize: yes
+  become: false
+
+- name: Pull latest docker image
+  ansible.builtin.shell:
+    cmd: docker-compose pull {{ service_name }}
+    chdir: ~/breizh_deploy
+  become: false
+
+- name: Start Docker Compose services
+  ansible.builtin.shell: 
+    cmd: docker-compose up -d --no-deps {{ service_name }}
+    chdir: ~/breizh_deploy
+  become: false

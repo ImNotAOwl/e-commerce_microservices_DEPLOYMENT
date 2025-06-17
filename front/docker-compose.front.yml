@@ -1,0 +1,14 @@
+services:
+  # Service du front
+  bs_front-end:
+    image: ghcr.io/maalsi23g1/front_end/front_service:latest
+    container_name: bs_front-end
+    ports:
+      - "8181:80"
+      - "443:443"
+    volumes:
+      - ./caddy_data:/data
+    env_file:
+      - ../.env
+    networks:
+      - bs-front-network

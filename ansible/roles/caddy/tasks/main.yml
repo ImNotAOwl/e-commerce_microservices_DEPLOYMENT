@@ -1,0 +1,31 @@
+- name: Ensure Caddy data directory exists
+  file:
+    path: "{{ caddy_data_path }}"
+    state: directory
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: '0755'
+
+- name: Set correct permissions for files in Caddy data directory
+  find:
+    paths: "{{ caddy_data_path }}"
+    recurse: yes
+  register: caddy_files
+
+- name: Change ownership of files to Caddy user
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: '0644'
+  with_items: "{{ caddy_files.files }}"
+  when: item.isdir == False
+
+- name: Change ownership of directories to Caddy user
+  file:
+    path: "{{ item.path }}"
+    owner: "{{ caddy_user }}"
+    group: "{{ caddy_group }}"
+    mode: '0755'
+  with_items: "{{ caddy_files.files }}"
+  when: item.isdir == True

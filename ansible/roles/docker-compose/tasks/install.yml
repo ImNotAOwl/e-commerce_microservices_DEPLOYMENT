@@ -1,0 +1,36 @@
+---
+- name: Download the latest Docker Compose binary
+  get_url:
+    url: https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64
+    dest: /tmp/docker-compose-linux-x86_64
+    mode: '0755'
+
+- name: Download the SHA256 checksum file
+  get_url:
+    url: https://github.com/docker/compose/releases/download/v2.32.4/docker-compose-linux-x86_64.sha256
+    dest: /tmp/docker-compose-linux-x86_64.sha256
+
+- name: Verify the SHA256 checksum
+  command: sha256sum -c /tmp/docker-compose-linux-x86_64.sha256
+  args:
+    chdir: /tmp
+  register: sha256_check
+  failed_when: sha256_check.rc != 0
+
+- name: Move the new Docker Compose binary to /usr/bin
+  command: mv /tmp/docker-compose-linux-x86_64 /usr/bin/docker-compose
+  when: sha256_check is defined and sha256_check.rc == 0
+
+- name: Apply executable permissions to the binary
+  file:
+    path: /usr/bin/docker-compose
+    mode: '0755'
+  when: sha256_check is defined and sha256_check.rc == 0
+
+- name: Verify Docker Compose installation
+  command: docker-compose --version
+  register: docker_compose_version
+
+- name: Display Docker Compose version
+  debug:
+    msg: "Docker Compose version: {{ docker_compose_version.stdout }}"

@@ -1,0 +1,88 @@
+services:
+  bs_catalogue_mongo-init:
+    image: mongo:7.0
+    container_name: bs_catalogue_mongo-init
+    env_file:
+      - ../../.env
+    volumes:
+      - ./init-mongo-db:/docker-entrypoint-initdb.d
+    networks:
+      - bs-catalog-network
+      - bs-logging-network
+
+    healthcheck:
+      test: ["CMD", "test", "-f", "/tmp/mongo-init/.init_done"]
+      interval: 20s
+      timeout: 5s
+      retries: 5
+    depends_on:
+      - bs_catalogue-mongo-primary
+      - bs_catalogue-mongo01
+      - bs_catalogue-mongo02
+
+  bs_catalogue-mongo-primary:
+    image: mongo:7.0
+    container_name: bs_catalogue-mongo-primary
+    volumes:
+      - ${CATALOG_VOLUME_HOST_PATH}/m1:/data/db
+      - ./keys/mongo-replica-set.key:/data/keyfile/mongo-replica-set.key:ro
+    ports:
+      - "27017:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    networks:
+      - bs-catalog-network
+      - bs-logging-network
+
+    command:
+      - "--replSet"
+      - "rs0"
+      - "--keyFile"
+      - "/data/keyfile/mongo-replica-set.key"
+
+  bs_catalogue-mongo01:
+    image: mongo:7.0
+    container_name: bs_catalogue-mongo01
+    volumes:
+      - ${CATALOG_VOLUME_HOST_PATH}/m2:/data/db
+      - ./keys/mongo-replica-set.key:/data/keyfile/mongo-replica-set.key:ro
+    ports:
+      - "27027:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    networks:
+      - bs-catalog-network
+      - bs-logging-network
+
+    command:
+      - "--replSet"
+      - "rs0"
+      - "--keyFile"
+      - "/data/keyfile/mongo-replica-set.key"
+    depends_on:
+      - bs_catalogue-mongo-primary
+
+  bs_catalogue-mongo02:
+    image: mongo:7.0
+    container_name: bs_catalogue-mongo02
+    volumes:
+      - ${CATALOG_VOLUME_HOST_PATH}/m3:/data/db
+      - ./keys/mongo-replica-set.key:/data/keyfile/mongo-replica-set.key:ro
+    ports:
+      - "27037:27017"
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    networks:
+      - bs-catalog-network
+      - bs-logging-network
+
+    command:
+      - "--replSet"
+      - "rs0"
+      - "--keyFile"
+      - "/data/keyfile/mongo-replica-set.key"
+    depends_on:
+      - bs_catalogue-mongo-primary

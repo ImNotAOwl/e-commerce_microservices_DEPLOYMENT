@@ -1,0 +1,40 @@
+services:
+   # Service pour Redis
+  bs_panier-redis:
+    image: redis:7-alpine
+    container_name: bs_panier-redis
+    ports:
+      - "6379:6379"  # Expose le port Redis
+    networks:
+      - bs-panier-network
+      - bs-logging-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
+  # Service de l'application Panier
+  bs_panier-api:
+    image: ghcr.io/maalsi23g1/panier_api/panier_service:latest
+    container_name: bs_panier-api
+    ports:
+      - "3001:3000"
+    depends_on:
+      bs_panier-redis:
+        condition: service_healthy
+      bs_rabbitmq:
+        condition: service_healthy
+    env_file:
+      - ../.env
+    networks:
+      - bs-panier-network
+      - bs-gateway-network
+      - bs-broker-network
+      - bs-logging-network
+
+networks:
+  bs-panier-network:
+    name:  bs-panier-network
+    driver: bridge
+    internal: true
